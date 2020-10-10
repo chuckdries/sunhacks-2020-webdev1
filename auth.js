@@ -6,3 +6,12 @@ export const grantAccessToken = async(userId, db) => {
     token, userId);
   return token;
 }
+
+export const lookupUserByToken = async (token, db) => {
+  const accessToken = await db.get('SELECT * FROM accessTokens WHERE token=?', token);
+  if (!accessToken) {
+    return;
+  }
+  const user = await db.get('SELECT * FROM Users WHERE id=?', accessToken.userId);
+  return user;
+}

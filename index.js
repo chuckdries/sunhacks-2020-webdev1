@@ -4,8 +4,9 @@ import bodyParser from 'body-parser';
 import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
 import bcrypt from 'bcrypt';
+import cookieParser from 'cookie-parser';
 
-import { grantAccessToken } from './auth';
+import { grantAccessToken, lookupUserByToken } from './auth';
 
 const dbPromise = open({
   filename: 'data.db',
@@ -26,8 +27,18 @@ app.engine('handlebars', exphbs());
 app.set('view engine', 'handlebars');
 
 app.use(bodyParser.urlencoded({ extended: false }))
+app.use(cookieParser())
 
-const messages = [];
+app.use(async (req, res, next) => {
+  const db = await dbPromise;
+  const user = await lookupUserByToken(req.cookies.accessToken, db);
+  if (!user) {
+    next();
+    return;
+  }
+  req.user = user;
+  next();
+})
 
 app.post('/message', async (req, res) => {
   const db = await dbPromise;
@@ -37,6 +48,7 @@ app.post('/message', async (req, res) => {
 })
 
 app.get('/', async (req, res) => {
+  console.log('user', req.user);
   const db = await dbPromise;
   const messages = await db.all('SELECT * FROM Messages;');
   console.log(messages);

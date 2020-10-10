@@ -2,11 +2,15 @@
 
 <ul>
   {{#each messages}}
-  <li>{{this.messageText}}</li>
+  <li>{{this.authorName}}: {{this.messageText}}</li>
   {{/each}}
 </ul>
 
+{{#if user}}
 <form action="/message" method="POST">
   <input name="messageText" type="text" placeholder="what do you want to say" />
   <button type="submit">Send</button>
 </form>
+{{else}}
+<a href="/login">login</a> <a href="/register">register</a>
+{{/if}}

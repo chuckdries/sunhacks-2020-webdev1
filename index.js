@@ -41,18 +41,30 @@ app.use(async (req, res, next) => {
 })
 
 app.post('/message', async (req, res) => {
+  if (!req.user) {
+    res.status(401).send('not logged in');
+  }
   const db = await dbPromise;
   const message = req.body.messageText;
-  await db.run('INSERT INTO Messages (messageText) VALUES (?);', message);
+  await db.run('INSERT INTO Messages (messageText, authorId, date) VALUES (?, ?, ?);',
+    message, req.user.id, Date.now());
   res.redirect('/');
 })
 
 app.get('/', async (req, res) => {
   console.log('user', req.user);
   const db = await dbPromise;
-  const messages = await db.all('SELECT * FROM Messages;');
+  const messages = await db.all(`
+    SELECT
+      Messages.id,
+      Messages.messageText,
+      Messages.date,
+      Users.name as authorName
+     FROM Messages
+     LEFT JOIN Users
+     WHERE Messages.authorId=Users.id;`);
   console.log(messages);
-  res.render('home', { messages: messages });
+  res.render('home', { messages: messages, user: req.user });
 });
 
 app.get('/register', (req, res) => {

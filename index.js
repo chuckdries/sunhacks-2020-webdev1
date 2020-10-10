@@ -5,6 +5,8 @@ import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
 import bcrypt from 'bcrypt';
 
+import { grantAccessToken } from './auth';
+
 const dbPromise = open({
   filename: 'data.db',
   driver: sqlite3.Database
@@ -61,8 +63,34 @@ app.post('/register', async (req, res) => {
   await db.run(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?);`,
     name, email, passwordHash);
   const newUser = await db.get('SELECT * FROM Users WHERE email=?', email);
-  console.log('new user!', newUser);
+  const token = await grantAccessToken(newUser.id, db);
+  res.cookie('accessToken', token);
   res.redirect('/')
+})
+
+app.get('/login', (req, res) => {
+  res.render('login');
+})
+
+app.post('/login', async (req, res) => {
+  const db = await dbPromise;
+  const {
+    email,
+    password
+  } = req.body;
+  const existingUser = await db.get('SELECT * FROM Users WHERE email=?', email);
+  if (!existingUser) {
+    res.render('login', { error: 'email or password incorrect' });
+    return;
+  };
+  const passwordMatches = await bcrypt.compare(password, existingUser.password);
+  if (!passwordMatches) {
+    res.render('login', { error: 'email or password incorrect' });
+    return;
+  }
+  const token = await grantAccessToken(existingUser.id, db);
+  res.cookie('accessToken', token);
+  res.redirect('/');
 })
 
 app.listen(port, () => {

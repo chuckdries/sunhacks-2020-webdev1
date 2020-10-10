@@ -1,17 +1,18 @@
-const express = require('express');
-const exphbs  = require('express-handlebars');
-const bodyParser = require('body-parser');
-const sqlite = require('sqlite');
-const sqlite3 = require('sqlite3');
+import express from 'express';
+import exphbs from 'express-handlebars';
+import bodyParser from 'body-parser';
+import { open } from 'sqlite';
+import sqlite3 from 'sqlite3';
+import bcrypt from 'bcrypt';
 
-const dbPromise = sqlite.open({
+const dbPromise = open({
   filename: 'data.db',
   driver: sqlite3.Database
 })
 
 const setupDatabase = async() => {
   const db = await dbPromise;
-  await db.run('CREATE TABLE IF NOT EXISTS Messages (id INTEGER PRIMARY KEY, messageText STRING);')
+  await db.migrate();
 }
 
 setupDatabase();
@@ -40,12 +41,28 @@ app.get('/', async (req, res) => {
   res.render('home', { messages: messages });
 });
 
-app.get('/two', (req, res) => {
-  res.render('two')
+app.get('/register', (req, res) => {
+  res.render('register');
 })
 
-app.get('/profile/:name', (req, res) => {
-  res.render('profile', { name: req.params.name })
+app.post('/register', async (req, res) => {
+  const db = await dbPromise;
+  const {
+    name,
+    email,
+    password
+  } = req.body;
+  const existingUser = await db.get('SELECT * FROM Users WHERE email=?', email);
+  if (existingUser) {
+    res.render('register', { error: 'user already exists' });
+    return;
+  }
+  const passwordHash = await bcrypt.hash(password, 10);
+  await db.run(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?);`,
+    name, email, passwordHash);
+  const newUser = await db.get('SELECT * FROM Users WHERE email=?', email);
+  console.log('new user!', newUser);
+  res.redirect('/')
 })
 
 app.listen(port, () => {

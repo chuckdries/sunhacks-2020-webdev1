@@ -3,6 +3,9 @@
     <title>sunhacks is fun</title>
   </head>
   <body>
+    {{#if error}}
+    <div style="color: maroon">{{error}}</div>
+    {{/if}}
     {{{body}}}
   </body>
 </html>
